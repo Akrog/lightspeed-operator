@@ -34,7 +34,7 @@ func generateConsoleSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/component":  "console-plugin",
 		"app.kubernetes.io/managed-by": "openstack-lightspeed-operator",
-		"app.kubernetes.io/name":       "lightspeed-console-plugin",
+		"app.kubernetes.io/name":       "openstack-lightspeed-console-plugin",
 		"app.kubernetes.io/part-of":    "openstack-lightspeed",
 	}
 }
@@ -106,7 +106,7 @@ func buildConsoleDeploymentSpec(consoleImage string) appsv1.DeploymentSpec {
 				},
 				Containers: []corev1.Container{
 					{
-						Name:  "lightspeed-console-plugin",
+						Name:  "openstack-lightspeed-console-plugin",
 						Image: consoleImage,
 						Ports: []corev1.ContainerPort{
 							{
@@ -131,7 +131,7 @@ func buildConsoleDeploymentSpec(consoleImage string) appsv1.DeploymentSpec {
 						},
 						VolumeMounts: []corev1.VolumeMount{
 							{
-								Name:      "lightspeed-console-plugin-cert",
+								Name:      "openstack-lightspeed-console-plugin-cert",
 								MountPath: "/var/cert",
 								ReadOnly:  true,
 							},
@@ -156,7 +156,7 @@ func buildConsoleDeploymentSpec(consoleImage string) appsv1.DeploymentSpec {
 				},
 				Volumes: []corev1.Volume{
 					{
-						Name: "lightspeed-console-plugin-cert",
+						Name: "openstack-lightspeed-console-plugin-cert",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
 								SecretName:  ConsoleUIServiceCertSecretName,

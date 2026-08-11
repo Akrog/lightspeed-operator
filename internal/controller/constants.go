@@ -98,7 +98,7 @@ const (
 	LCoreDeploymentName      = "lightspeed-stack-deployment"
 	LCoreConfigMountPath     = "/app-root/lightspeed-stack.yaml"
 	LCoreUserDataMountPath   = "/tmp/data"
-	ForceReloadAnnotationKey = "ols.openshift.io/force-reload"
+	ForceReloadAnnotationKey = "rls.openshift.io/force-reload"
 	// Health probe settings for the llama-stack/OGX container.
 	// The startup probe allows up to 30 failures (300s) for the slow initialization,
 	// while liveness and readiness probes use a tighter threshold of 3 failures.
@@ -130,7 +130,7 @@ const (
 	ExporterConfigFilename         = "config.yaml"
 	ExporterConfigCmName           = "lightspeed-exporter-config"
 	DataverseExporterContainerName = "lightspeed-to-dataverse-exporter"
-	UserDataVolumeName             = "ols-user-data"
+	UserDataVolumeName             = "rls-user-data"
 	RHOSOLightspeedOwnerIDLabel    = "openstack.org/lightspeed-owner-id"
 	ServiceIDRHOSO                 = "rhos-lightspeed"
 
@@ -147,16 +147,16 @@ const (
 	ExternalProvidersDir   = "/app-root/providers.d"
 
 	// Console Plugin
-	ConsoleUIConfigMapName         = "lightspeed-console-plugin"
-	ConsoleUIServiceCertSecretName = "lightspeed-console-plugin-cert"
-	ConsoleUIServiceName           = "lightspeed-console-plugin"
-	ConsoleUIDeploymentName        = "lightspeed-console-plugin"
+	ConsoleUIConfigMapName         = "openstack-lightspeed-console-plugin"
+	ConsoleUIServiceCertSecretName = "openstack-lightspeed-console-plugin-cert"
+	ConsoleUIServiceName           = "openstack-lightspeed-console-plugin"
+	ConsoleUIDeploymentName        = "openstack-lightspeed-console-plugin"
 	ConsoleUIHTTPSPort             = int32(9443)
-	ConsoleUIPluginName            = "lightspeed-console-plugin"
-	ConsoleUIServiceAccountName    = "lightspeed-console-plugin"
+	ConsoleUIPluginName            = "openstack-lightspeed-console-plugin"
+	ConsoleUIServiceAccountName    = "openstack-lightspeed-console-plugin"
 	ConsoleCRName                  = "cluster"
-	ConsoleProxyAlias              = "ols"
-	ConsoleUINetworkPolicyName     = "lightspeed-console-plugin"
+	ConsoleProxyAlias              = "rls"
+	ConsoleUINetworkPolicyName     = "openstack-lightspeed-console-plugin"
 
 	// Provider name constants representing valid values for
 	// OpenStackLightpseed.Spec.LLMEndpointType (providers available to users)
@@ -267,16 +267,16 @@ const (
 	// These constants define annotation keys used to track the resource versions of specific ConfigMaps.
 	// By recording the resource version of a ConfigMap in a Deployment, StatefulSet, or similar resource,
 	// changes to the referenced ConfigMaps can be detected and trigger rollouts or reconciliation in the operator.
-	PostgresConfigMapResourceVersionAnnotation   = "ols.openshift.io/postgres-configmap-version"
-	PostgresSecretResourceVersionAnnotation      = "ols.openshift.io/postgres-secret-version" // #nosec G101 -- annotation key, not a credential
-	VectorDBScriptsConfigMapVersionAnnotation    = "ols.openshift.io/vector-db-scripts-configmap-version"
-	LlamaStackConfigMapResourceVersionAnnotation = "ols.openshift.io/llamastack-configmap-version"
-	LCoreConfigMapResourceVersionAnnotation      = "ols.openshift.io/lcore-configmap-version"
-	CABundleConfigMapVersionAnnotation           = "ols.openshift.io/ca-bundle-configmap-version"
-	MCPConfigMapResourceVersionAnnotation        = "ols.openshift.io/mcp-configmap-version"
-	CloudsYAMLConfigMapVersionAnnotation         = "ols.openshift.io/clouds-yaml-configmap-version"
-	SecureYAMLSecretVersionAnnotation            = "ols.openshift.io/secure-yaml-secret-version"        // #nosec G101 -- annotation key, not a credential
-	CombinedCABundleSecretVersionAnnotation      = "ols.openshift.io/combined-ca-bundle-secret-version" // #nosec G101 -- annotation key, not a credential
+	PostgresConfigMapResourceVersionAnnotation   = "rls.openshift.io/postgres-configmap-version"
+	PostgresSecretResourceVersionAnnotation      = "rls.openshift.io/postgres-secret-version" // #nosec G101 -- annotation key, not a credential
+	VectorDBScriptsConfigMapVersionAnnotation    = "rls.openshift.io/vector-db-scripts-configmap-version"
+	LlamaStackConfigMapResourceVersionAnnotation = "rls.openshift.io/llamastack-configmap-version"
+	LCoreConfigMapResourceVersionAnnotation      = "rls.openshift.io/lcore-configmap-version"
+	CABundleConfigMapVersionAnnotation           = "rls.openshift.io/ca-bundle-configmap-version"
+	MCPConfigMapResourceVersionAnnotation        = "rls.openshift.io/mcp-configmap-version"
+	CloudsYAMLConfigMapVersionAnnotation         = "rls.openshift.io/clouds-yaml-configmap-version"
+	SecureYAMLSecretVersionAnnotation            = "rls.openshift.io/secure-yaml-secret-version"        // #nosec G101 -- annotation key, not a credential
+	CombinedCABundleSecretVersionAnnotation      = "rls.openshift.io/combined-ca-bundle-secret-version" // #nosec G101 -- annotation key, not a credential
 
 	// Volume Permissions
 	// These constants define file permissions for volumes mounted in containers.
