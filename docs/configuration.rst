@@ -170,6 +170,71 @@ Offline Knowledge Portal (``okp``)
 By default, **RAG grounding is OKP-only** — the bundled community
 documentation is disabled unless you set ``dev.okpRagOnly: false`` (below).
 
+.. _quota-enforcement:
+
+Quota enforcement (``quotas``)
+------------------------------
+
+Configure one or more limiters to enable token quota enforcement. The
+operator uses its managed PostgreSQL instance for quota storage. Omitting
+``quotas`` or leaving ``limiters`` empty disables enforcement.
+
+.. code-block:: yaml
+
+   spec:
+     quotas:
+       limiters:
+         - name: per-user-hourly
+           type: userLimiter
+           initialQuota: 1000
+           quotaIncrease: 1000
+           period: "1 hour"
+         - name: cluster-daily
+           type: clusterLimiter
+           initialQuota: 100000
+           quotaIncrease: 100000
+           period: "1 day"
+       scheduler:
+         period: 10
+       enableTokenHistory: true
+
+Each entry in ``limiters`` requires these fields:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Field
+     - Description
+   * - ``name``
+     - A human-readable limiter name.
+   * - ``type``
+     - ``userLimiter`` for a per-user quota, or ``clusterLimiter`` for one
+       quota shared by the cluster.
+   * - ``initialQuota``
+     - Number of tokens granted when the limiter resets. Must be zero or
+       greater.
+   * - ``quotaIncrease``
+     - Number of tokens added by the scheduler at each quota interval. Must
+       be zero or greater.
+   * - ``period``
+     - Interval that controls when the limiter resets or increases, such as
+       ``"30 seconds"``, ``"1 hour"``, ``"1 day"``, or
+       ``"1 hour 30 minutes"``.
+
+``scheduler`` is optional and configures the background process that checks
+limiters for reset or increase and reconnects to the database after a
+connection failure:
+
+* ``period``: check interval in seconds. Default: ``5``.
+* ``databaseReconnectionCount``: number of database reconnection attempts.
+  Default: ``10``.
+* ``databaseReconnectionDelay``: delay in seconds between reconnection
+  attempts. Default: ``1``.
+
+Set ``enableTokenHistory: true`` to record per-user, model, and provider token
+usage for auditing. It does not affect enforcement and defaults to ``false``.
+
 Developer / experimental options (``dev``)
 -----------------------------------------------
 
