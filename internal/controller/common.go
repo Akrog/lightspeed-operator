@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -164,6 +165,30 @@ func parseDevConfig(instance *apiv1beta1.OpenStackLightspeed) (apiv1beta1.DevSpe
 		}
 	}
 	return devConfig, nil
+}
+
+// defaultRhosMCPResources returns the default resource requirements for the rhos-mcps sidecar.
+func defaultRhosMCPResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("64Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
+		},
+	}
+}
+
+// getRhosMCPResources returns compute resources for the rhos-mcps sidecar from dev.rhosMCP.resources,
+// falling back to operator defaults when unset.
+func getRhosMCPResources(instance *apiv1beta1.OpenStackLightspeed) corev1.ResourceRequirements {
+	devConfig, _ := parseDevConfig(instance)
+	if devConfig.RhosMCP != nil &&
+		(len(devConfig.RhosMCP.Resources.Requests) > 0 || len(devConfig.RhosMCP.Resources.Limits) > 0) {
+		return devConfig.RhosMCP.Resources
+	}
+	return defaultRhosMCPResources()
 }
 
 // isRHOSOMCPEnabled returns true if the "rhoso_mcps" feature flag is present in the dev config.

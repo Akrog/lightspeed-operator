@@ -69,6 +69,11 @@ func buildLCorePodTemplateSpec(ctx context.Context, h *common_helper.Helper, ins
 		ReadOnly:  true,
 	})
 
+	ogxResources := corev1.ResourceRequirements{}
+	if instance.Spec.OGX != nil {
+		ogxResources = instance.Spec.OGX.Resources
+	}
+
 	llamaStackContainer := corev1.Container{
 		Name:         "llama-stack",
 		Image:        apiv1beta1.OpenStackLightspeedDefaultValues.LCoreImageURL,
@@ -109,7 +114,7 @@ func buildLCorePodTemplateSpec(ctx context.Context, h *common_helper.Helper, ins
 			TimeoutSeconds:   LlamaStackProbeTimeoutSeconds,
 			FailureThreshold: LlamaStackProbeFailureThreshold,
 		},
-		Resources:       instance.Spec.Resources.LlamaStack,
+		Resources:       ogxResources,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 	}
 
@@ -135,6 +140,11 @@ func buildLCorePodTemplateSpec(ctx context.Context, h *common_helper.Helper, ins
 		})
 	}
 
+	lightspeedResources := corev1.ResourceRequirements{}
+	if instance.Spec.Lightspeed != nil {
+		lightspeedResources = instance.Spec.Lightspeed.Resources
+	}
+
 	lightspeedStackContainer := corev1.Container{
 		Name:            "lightspeed-service-api",
 		Image:           apiv1beta1.OpenStackLightspeedDefaultValues.LCoreImageURL,
@@ -145,7 +155,7 @@ func buildLCorePodTemplateSpec(ctx context.Context, h *common_helper.Helper, ins
 		StartupProbe:    buildLightspeedStackStartupProbe(),
 		LivenessProbe:   buildLightspeedStackLivenessProbe(),
 		ReadinessProbe:  buildLightspeedStackReadinessProbe(),
-		Resources:       instance.Spec.Resources.LightspeedService,
+		Resources:       lightspeedResources,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 	}
 	containers := []corev1.Container{llamaStackContainer, lightspeedStackContainer}
@@ -159,7 +169,7 @@ func buildLCorePodTemplateSpec(ctx context.Context, h *common_helper.Helper, ins
 			Args: []string{
 				"--mode", "openshift",
 				"--config", path.Join(ExporterConfigMountPath, ExporterConfigFilename),
-				"--log-level", instance.Spec.Logging.DataverseExporterLogLevel,
+				"--log-level", dataverseExporterLogLevel(instance),
 				"--data-dir", LCoreUserDataMountPath,
 			},
 			VolumeMounts: []corev1.VolumeMount{
@@ -205,7 +215,7 @@ func buildLCorePodTemplateSpec(ctx context.Context, h *common_helper.Helper, ins
 			Name:         "rhoso-mcps",
 			Image:        apiv1beta1.OpenStackLightspeedDefaultValues.MCPServerImageURL,
 			VolumeMounts: mcpMounts,
-			Resources:    instance.Spec.Resources.MCP,
+			Resources:    getRhosMCPResources(instance),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
@@ -702,7 +712,7 @@ func buildLightspeedStackEnvVars(instance *apiv1beta1.OpenStackLightspeed) []cor
 	envVars := []corev1.EnvVar{
 		{
 			Name:  "LIGHTSPEED_STACK_LOG_LEVEL",
-			Value: instance.Spec.Logging.LightspeedStackLogLevel,
+			Value: getLightspeedLogLevel(instance),
 		},
 	}
 	envVars = append(envVars, corev1.EnvVar{
@@ -777,12 +787,24 @@ func buildLightspeedStackReadinessProbe() *corev1.Probe {
 	}
 }
 
+// getLightspeedLogLevel returns the log level for the lightspeed-service-api container.
+// Defaults to "INFO" when unset.
+func getLightspeedLogLevel(instance *apiv1beta1.OpenStackLightspeed) string {
+	if instance.Spec.Lightspeed != nil && instance.Spec.Lightspeed.LogLevel != "" {
+		return instance.Spec.Lightspeed.LogLevel
+	}
+	return "INFO"
+}
+
 // getOGXLogLevel returns the log level for OGX/llama-stack container.
 // Supports either standard levels (INFO, DEBUG, WARNING, ERROR, CRITICAL) or fine-grained control.
 // Examples: "INFO" -> "all=info", "DEBUG" -> "all=debug", "core=debug,providers=info" -> "core=debug,providers=info"
 // Defaults to "all=info" if not specified.
 func getOGXLogLevel(instance *apiv1beta1.OpenStackLightspeed) string {
-	logLevel := instance.Spec.Logging.OGXLogLevel
+	logLevel := ""
+	if instance.Spec.OGX != nil {
+		logLevel = instance.Spec.OGX.LogLevel
+	}
 
 	// If it's a simple level (INFO, DEBUG, etc.), convert to "all=<level>" format
 	// Otherwise, pass through for fine-grained control (e.g., "core=debug,providers=info")
