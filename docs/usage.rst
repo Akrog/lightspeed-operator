@@ -37,6 +37,18 @@ resources instead of relying on docs alone.
 
 Disabled by default; still evolving.
 
+Quota enforcement (optional)
+----------------------------
+
+OpenStack Lightspeed can enforce token quotas per user and across the whole
+cluster using lightspeed-stack's built-in quota system. The operator manages
+the quota storage automatically, so no additional setup is needed.
+
+Quota enforcement is opt-in: it is disabled until you configure at least one
+limiter. You can combine per-user and cluster-wide limiters; requests must
+satisfy each configured limiter. See :ref:`quota-enforcement` for the
+configuration and an example.
+
 Feedback and transcripts
 ----------------------------
 
