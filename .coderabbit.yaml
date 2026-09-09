@@ -1,0 +1,11 @@
+reviews:
+  pre_merge_checks:
+    custom_checks:
+      - name: "Keep documentation current"
+        mode: "error"
+        instructions: |
+          Fail when a pull request changes user-visible behavior, installation, configuration,
+          OpenStackLightspeed CRD fields, deployment requirements, or development workflows
+          without updating the applicable documentation. Use README.md for the project overview
+          and quickstart, and docs/*.rst for detailed installation, configuration, usage, and
+          troubleshooting. Pass changes that are internal-only and do not affect documented behavior.
