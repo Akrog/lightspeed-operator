@@ -364,6 +364,10 @@ func (r *OpenStackLightspeedReconciler) reconcileStatus(
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *OpenStackLightspeedReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := initClusterClient(mgr); err != nil {
+		return err
+	}
+
 	// Use Build instead of Complete to get the controller reference needed by WatchDynamicCRD.
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		For(&apiv1beta1.OpenStackLightspeed{}).

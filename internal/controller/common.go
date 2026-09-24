@@ -25,6 +25,7 @@ import (
 	"math/big"
 	"slices"
 	"strings"
+	"sync"
 
 	common_cm "github.com/openstack-k8s-operators/lib-common/modules/common/configmap"
 	common_helper "github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -39,9 +40,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+)
+
+// clusterClient is a process-lifetime, uncached client used for cluster-wide
+// reads (not restricted to WATCH_NAMESPACE). It is initialized once from
+// SetupWithManager when possible, or lazily on first getRawClient call.
+var (
+	clusterClientMu sync.Mutex
+	clusterClient   client.Client
 )
 
 // toPtr returns a pointer to the given value.
@@ -49,21 +59,50 @@ func toPtr[T any](v T) *T {
 	return &v
 }
 
+// initClusterClient creates a single uncached cluster-wide client that shares
+// the manager's HTTP client and REST mapper, avoiding repeated client.New
+// allocations (HTTP transport + DynamicRESTMapper) on every reconcile.
+func initClusterClient(mgr ctrl.Manager) error {
+	c, err := client.New(mgr.GetConfig(), client.Options{
+		Scheme:     mgr.GetScheme(),
+		Mapper:     mgr.GetRESTMapper(),
+		HTTPClient: mgr.GetHTTPClient(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create cluster-wide client: %w", err)
+	}
+
+	clusterClientMu.Lock()
+	clusterClient = c
+	clusterClientMu.Unlock()
+	return nil
+}
+
 // getRawClient returns a raw client that is not restricted to WATCH_NAMESPACE.
 // This is useful for operations that need to query resources across all namespaces
-// cluster wide.
+// cluster wide. The client is created once and reused for the process lifetime.
 func getRawClient(helper *common_helper.Helper) (client.Client, error) {
+	clusterClientMu.Lock()
+	defer clusterClientMu.Unlock()
+
+	if clusterClient != nil {
+		return clusterClient, nil
+	}
+
+	// Fallback for tests / early calls before SetupWithManager.
+	// Transient failures are not sticky: the next call retries creation.
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	rawClient, err := client.New(cfg, client.Options{Scheme: helper.GetScheme()})
+	c, err := client.New(cfg, client.Options{Scheme: helper.GetScheme()})
 	if err != nil {
 		return nil, err
 	}
 
-	return rawClient, nil
+	clusterClient = c
+	return clusterClient, nil
 }
 
 // generateAppServerSelectorLabels returns a map of labels used as selectors
@@ -77,30 +116,22 @@ func generateAppServerSelectorLabels() map[string]string {
 	}
 }
 
-// getConfigMapResourceVersion retrieves the resource version of a ConfigMap.
+// getConfigMapResourceVersion retrieves the resource version of a ConfigMap
+// in the operator's watch namespace via the cached manager client.
 func getConfigMapResourceVersion(ctx context.Context, h *common_helper.Helper, name string, namespace string) (string, error) {
-	rawClient, err := getRawClient(h)
-	if err != nil {
-		return "", fmt.Errorf("failed to get raw client: %w", err)
-	}
-
 	cm := &corev1.ConfigMap{}
-	err = rawClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, cm)
+	err := h.GetClient().Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, cm)
 	if err != nil {
 		return "", fmt.Errorf("failed to get configmap %s: %w", name, err)
 	}
 	return cm.ResourceVersion, nil
 }
 
-// getSecretResourceVersion retrieves the resource version of a Secret.
+// getSecretResourceVersion retrieves the resource version of a Secret
+// in the operator's watch namespace via the cached manager client.
 func getSecretResourceVersion(ctx context.Context, h *common_helper.Helper, name string, namespace string) (string, error) {
-	rawClient, err := getRawClient(h)
-	if err != nil {
-		return "", fmt.Errorf("failed to get raw client: %w", err)
-	}
-
 	secret := &corev1.Secret{}
-	err = rawClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
+	err := h.GetClient().Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret %s: %w", name, err)
 	}
