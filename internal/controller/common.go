@@ -116,26 +116,31 @@ func generateAppServerSelectorLabels() map[string]string {
 	}
 }
 
-// getConfigMapResourceVersion retrieves the resource version of a ConfigMap
-// in the operator's watch namespace via the cached manager client.
-func getConfigMapResourceVersion(ctx context.Context, h *common_helper.Helper, name string, namespace string) (string, error) {
+// getConfigMapContentHash returns a content hash of a ConfigMap's Data and
+// BinaryData (via lib-common), suitable for pod template annotations that
+// should only change when the ConfigMap content changes.
+func getConfigMapContentHash(ctx context.Context, h *common_helper.Helper, name string, namespace string) (string, error) {
 	cm := &corev1.ConfigMap{}
 	err := h.GetClient().Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, cm)
 	if err != nil {
 		return "", fmt.Errorf("failed to get configmap %s: %w", name, err)
 	}
-	return cm.ResourceVersion, nil
+	hash, err := common_cm.Hash(cm)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash configmap %s: %w", name, err)
+	}
+	return hash, nil
 }
 
-// getSecretResourceVersion retrieves the resource version of a Secret
-// in the operator's watch namespace via the cached manager client.
-func getSecretResourceVersion(ctx context.Context, h *common_helper.Helper, name string, namespace string) (string, error) {
-	secret := &corev1.Secret{}
-	err := h.GetClient().Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
+// getSecretContentHash returns a content hash of a Secret (via lib-common
+// GetSecret), suitable for pod template annotations that should only change
+// when the Secret content changes.
+func getSecretContentHash(ctx context.Context, h *common_helper.Helper, name string, namespace string) (string, error) {
+	_, hash, err := common_secret.GetSecret(ctx, h, name, namespace)
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret %s: %w", name, err)
 	}
-	return secret.ResourceVersion, nil
+	return hash, nil
 }
 
 // providerNameToEnvVarName converts a provider name to a valid environment variable name.

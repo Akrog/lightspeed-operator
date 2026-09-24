@@ -332,12 +332,12 @@ func reconcilePostgresDeploymentTask(ctx context.Context, h *common_helper.Helpe
 	}
 
 	result, err := controllerutil.CreateOrPatch(ctx, h.GetClient(), deployment, func() error {
-		currentConfigMapVersion, err := getConfigMapResourceVersion(ctx, h, PostgresConfigMapName, h.GetBeforeObject().GetNamespace())
+		currentConfigMapHash, err := getConfigMapContentHash(ctx, h, PostgresConfigMapName, h.GetBeforeObject().GetNamespace())
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("%w: %w", ErrGetPostgresConfigMap, err)
 		}
 
-		currentSecretVersion, err := getSecretResourceVersion(ctx, h, PostgresSecretName, h.GetBeforeObject().GetNamespace())
+		currentSecretHash, err := getSecretContentHash(ctx, h, PostgresSecretName, h.GetBeforeObject().GetNamespace())
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("%w: %w", ErrGetPostgresSecret, err)
 		}
@@ -350,10 +350,10 @@ func reconcilePostgresDeploymentTask(ctx context.Context, h *common_helper.Helpe
 			podTemplateSpec.Annotations = map[string]string{}
 		}
 
-		// Store the current ConfigMap and Secret versions in pod template annotations.
-		// When either changes, Kubernetes will see a pod template change and trigger a rollout.
-		podTemplateSpec.Annotations[PostgresConfigMapResourceVersionAnnotation] = currentConfigMapVersion
-		podTemplateSpec.Annotations[PostgresSecretResourceVersionAnnotation] = currentSecretVersion
+		// Store ConfigMap and Secret content hashes in pod template annotations.
+		// When either's content changes, Kubernetes will see a pod template change and trigger a rollout.
+		podTemplateSpec.Annotations[PostgresConfigMapResourceVersionAnnotation] = currentConfigMapHash
+		podTemplateSpec.Annotations[PostgresSecretResourceVersionAnnotation] = currentSecretHash
 
 		// Selective field updates (avoid update loops)
 		replicas := int32(1)
