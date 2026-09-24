@@ -121,10 +121,11 @@ func reconcilePostgresBootstrapSecret(ctx context.Context, h *common_helper.Help
 	}
 
 	result, err := controllerutil.CreateOrPatch(ctx, h.GetClient(), secret, func() error {
-		// Set bootstrap script data
-		secret.StringData = map[string]string{
-			PostgresBootstrapScript:    PostgresBootStrapScriptContent,
-			PostgresBootstrapSQLScript: PostgresBootStrapSQLContent,
+		// Use Data (not StringData): StringData is write-only and always nil on read,
+		// which makes CreateOrPatch patch on every reconcile.
+		secret.Data = map[string][]byte{
+			PostgresBootstrapScript:    []byte(PostgresBootStrapScriptContent),
+			PostgresBootstrapSQLScript: []byte(PostgresBootStrapSQLContent),
 		}
 		return controllerutil.SetControllerReference(h.GetBeforeObject(), secret, h.GetScheme())
 	})
