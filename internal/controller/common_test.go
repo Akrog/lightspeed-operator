@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	apiv1beta1 "github.com/openstack-k8s-operators/lightspeed-operator/api/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -253,5 +254,56 @@ func TestGetRawClientReturnsCachedClient(t *testing.T) {
 	}
 	if got2 != got {
 		t.Fatal("getRawClient() returned a different client on second call")
+	}
+}
+
+func TestGetResourcePollInterval(t *testing.T) {
+	makeInstance := func(devJSON string) *apiv1beta1.OpenStackLightspeed {
+		instance := &apiv1beta1.OpenStackLightspeed{}
+		if devJSON != "" {
+			instance.Spec.Dev = runtime.RawExtension{Raw: []byte(devJSON)}
+		}
+		return instance
+	}
+
+	tests := []struct {
+		name    string
+		devJSON string
+		want    time.Duration
+	}{
+		{name: "unset defaults to 60s", devJSON: "", want: ResourceCreationTimeout},
+		{name: "empty object defaults to 60s", devJSON: `{}`, want: ResourceCreationTimeout},
+		{name: "explicit 30s", devJSON: `{"resourcePollInterval":30}`, want: 30 * time.Second},
+		{name: "explicit 120s", devJSON: `{"resourcePollInterval":120}`, want: 120 * time.Second},
+		{name: "zero defaults to 60s", devJSON: `{"resourcePollInterval":0}`, want: ResourceCreationTimeout},
+		{name: "negative defaults to 60s", devJSON: `{"resourcePollInterval":-1}`, want: ResourceCreationTimeout},
+		{name: "malformed JSON defaults to 60s", devJSON: `{`, want: ResourceCreationTimeout},
+		// 1e10 * time.Second overflows int64 nanoseconds to a negative duration.
+		{name: "overflow defaults to 60s", devJSON: `{"resourcePollInterval":10000000000}`, want: ResourceCreationTimeout},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getResourcePollInterval(makeInstance(tt.devJSON))
+			if got != tt.want {
+				t.Errorf("getResourcePollInterval() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// Ensure resourcePollInterval unmarshals from DevSpec via ParseDevConfig.
+func TestParseDevConfigResourcePollInterval(t *testing.T) {
+	instance := &apiv1beta1.OpenStackLightspeed{
+		Spec: apiv1beta1.OpenStackLightspeedSpec{
+			Dev: runtime.RawExtension{Raw: []byte(`{"resourcePollInterval":45}`)},
+		},
+	}
+	devConfig, err := instance.ParseDevConfig()
+	if err != nil {
+		t.Fatalf("ParseDevConfig() unexpected error: %v", err)
+	}
+	if devConfig.ResourcePollInterval != 45 {
+		t.Errorf("ResourcePollInterval = %d, want 45", devConfig.ResourcePollInterval)
 	}
 }

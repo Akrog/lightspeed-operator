@@ -189,7 +189,7 @@ func (r *OpenStackLightspeedReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 			}
 			if needsPoll {
-				result.RequeueAfter = ResourceCreationTimeout
+				result.RequeueAfter = getResourcePollInterval(instance)
 			}
 		}
 	}()
@@ -312,7 +312,7 @@ func (r *OpenStackLightspeedReconciler) reconcileStatus(
 					apiv1beta1.DeploymentsNotReadyMessage,
 					deploymentName,
 				))
-				return ctrl.Result{RequeueAfter: ResourceCreationTimeout}, nil
+				return ctrl.Result{RequeueAfter: getResourcePollInterval(instance)}, nil
 			}
 			Log.Error(err, "failed to get deployment", "deployment", deploymentName)
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -332,7 +332,7 @@ func (r *OpenStackLightspeedReconciler) reconcileStatus(
 				apiv1beta1.DeploymentsNotReadyMessage,
 				deploymentName,
 			))
-			return ctrl.Result{RequeueAfter: ResourceCreationTimeout}, nil
+			return ctrl.Result{RequeueAfter: getResourcePollInterval(instance)}, nil
 		}
 	}
 

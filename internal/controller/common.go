@@ -22,10 +22,12 @@ import (
 	_ "embed" // Required for go:embed directives in this package
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	common_cm "github.com/openstack-k8s-operators/lib-common/modules/common/configmap"
 	common_helper "github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -217,6 +219,24 @@ func getRhosMCPResources(instance *apiv1beta1.OpenStackLightspeed) corev1.Resour
 		}
 	}
 	return resources
+}
+
+// getResourcePollInterval returns the requeue/poll interval from
+// spec.dev.resourcePollInterval (seconds). Falls back to
+// ResourceCreationTimeout when unset, non-positive, unparsable, or too
+// large to convert to a positive time.Duration.
+func getResourcePollInterval(instance *apiv1beta1.OpenStackLightspeed) time.Duration {
+	devConfig, err := instance.ParseDevConfig()
+	if err != nil || devConfig.ResourcePollInterval <= 0 {
+		return ResourceCreationTimeout
+	}
+	// time.Duration is int64 nanoseconds. Seconds above MaxInt64/time.Second
+	// overflow to a negative duration on multiply; controller-runtime only
+	// schedules RequeueAfter when positive, so polling would stop silently.
+	if int64(devConfig.ResourcePollInterval) > int64(math.MaxInt64/time.Second) {
+		return ResourceCreationTimeout
+	}
+	return time.Duration(devConfig.ResourcePollInterval) * time.Second
 }
 
 // isRHOSOMCPEnabled returns true if the "rhoso_mcps" feature flag is present in the dev config.
