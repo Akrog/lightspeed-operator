@@ -148,8 +148,9 @@ func (r *OpenStackLightspeedReconciler) Reconcile(ctx context.Context, req ctrl.
 			panic(r)
 		}
 
+		// 1) Restore subconditions first so Mirror tie-breaks on real LTTs
 		condition.RestoreLastTransitionTimes(&instance.Status.Conditions, savedConditions)
-		// update the Ready condition based on the sub conditions
+
 		if instance.Status.Conditions.AllSubConditionIsTrue() {
 			instance.Status.Conditions.MarkTrue(
 				condition.ReadyCondition, condition.ReadyMessage)
@@ -161,6 +162,9 @@ func (r *OpenStackLightspeedReconciler) Reconcile(ctx context.Context, req ctrl.
 			instance.Status.Conditions.Set(
 				instance.Status.Conditions.Mirror(condition.ReadyCondition))
 		}
+
+		// 2) Restore again so Ready LTT is preserved after aggregation
+		condition.RestoreLastTransitionTimes(&instance.Status.Conditions, savedConditions)
 
 		err := helper.PatchInstance(ctx, instance)
 		if err != nil {
